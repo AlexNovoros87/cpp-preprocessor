@@ -106,32 +106,13 @@ bool Preprocess(const path& in_file, const path& out_file, const vector<path>& i
         return false;
     }
 
-
-    if (filesystem::directory_entry(in_file).is_directory()) {
-        vector<path> direct_paths;
-        for (const filesystem::directory_entry& entry : filesystem::directory_iterator(in_file)) {
-            direct_paths.push_back(entry.path());
-        }
-        vector<path>matched_paths;
-        MatchedDirs(direct_paths, matched_paths);
-        for (const path& pth : matched_paths) {
-            Preprocess(pth, out_file, include_directories);
-        }
-    };
-
     int counter = 0;
     ifstream readln(in_file, ios::binary);
     if (!readln) {
         return false;
     };
 
-    if (filesystem::directory_entry(in_file).is_directory())
-    {
-        for (const filesystem::directory_entry& entry : filesystem::directory_iterator(in_file)) {
-            Preprocess(entry.path(), out_file, include_directories);
-        }
-    }
-
+    
     const  regex R1(R"/(\s*#\s*include\s*"([^"]*)"\s*)/");
     const  regex R2(R"/(\s*#\s*include\s*<([^>]*)>\s*)/");
     path par_path = in_file.parent_path();
@@ -139,10 +120,6 @@ bool Preprocess(const path& in_file, const path& out_file, const vector<path>& i
     smatch sm;
     if (filesystem::directory_entry(in_file).is_regular_file()) {
 
-         
-        
-        
-        
         do
         {
             string buf;
