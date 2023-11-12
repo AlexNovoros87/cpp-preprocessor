@@ -7,9 +7,6 @@
 #include <string>
 #include<vector>
 
-//По максимуму решил убрать if-else во имя быстродействия чтоб процессор
-//по минимуму оставлять в "подвешенном" состоянии
-
 using namespace std;
 using filesystem::path;
 
@@ -48,8 +45,6 @@ pair<bool, path> LocalSearch(const string& what_find, const path& where_find,
     return GlobalSearch(what_find, include_directories);
 }
 
-
-
 void MatchedDirs(const vector<path>& original, vector<path>& matched) {
     vector<path>to_loop;
     for (const path& pth : original) {
@@ -70,10 +65,10 @@ void MatchedDirs(const vector<path>& original, vector<path>& matched) {
 
 
 pair<bool, path> GlobalSearch(const string& what_find, const vector<path>& include_directories) {
-   //Пытался решить задачу используя рекурсивнвй итератор - в IDE все хорошо - компилятор практикума не принимает
-    //пришлось делать Matched_dirs
-    
-    
+    //Пытался решить задачу используя рекурсивнвй итератор - в IDE все хорошо - компилятор практикума не принимает
+     //пришлось делать Matched_dirs
+
+
     vector<path> matched_directions;
     MatchedDirs(include_directories, matched_directions);
     for (const path& pth : matched_directions) {
@@ -102,23 +97,28 @@ void PrintError(const string& what, const string& whereis, int line = 0) {
 
 bool Preprocess(const path& in_file, const path& out_file, const vector<path>& include_directories) {
 
-    if (!filesystem::exists(in_file)) {
+
+    ofstream writeln(out_file, ios::binary | ios::app);
+    if (!filesystem::exists(in_file) || !filesystem::exists(out_file)) {
         return false;
     }
-
     int counter = 0;
     ifstream readln(in_file, ios::binary);
     if (!readln) {
         return false;
     };
 
-    
+
     const  regex R1(R"/(\s*#\s*include\s*"([^"]*)"\s*)/");
     const  regex R2(R"/(\s*#\s*include\s*<([^>]*)>\s*)/");
     path par_path = in_file.parent_path();
     string file_name = in_file.filename().string();
     smatch sm;
+
     if (filesystem::directory_entry(in_file).is_regular_file()) {
+
+        //переделал как вы говорили
+         //в курсе было же сказано что как можно меньше использовать иф-элс... про ассемблер понятия не имею
 
         do
         {
@@ -126,43 +126,33 @@ bool Preprocess(const path& in_file, const path& out_file, const vector<path>& i
             if (!getline(readln, buf))break;
             ++counter;
 
-            enum CHOISE {
-                LOCAL, GLOBAL, DEFAULT
+            if (regex_match(buf, sm, R1))
+            {
+                pair <string, path> where_and_what = ConstructorPath(par_path, sm[1]);
+                pair<bool, path> tup = LocalSearch(where_and_what.first, where_and_what.second, include_directories);
+                if (!tup.first) {
+                    PrintError(where_and_what.first, in_file.string(), counter);
+                    return false;
+                }
+                Preprocess(tup.second, out_file, include_directories);
+
+            }
+            else if (regex_match(buf, sm, R2)) {
+                pair <string, path> where_and_what = ConstructorPath(par_path, sm[1]);
+                pair<bool, path> tup = GlobalSearch(where_and_what.first, include_directories);
+                if (!tup.first) {
+                    PrintError(where_and_what.first, in_file.string(), counter);
+                    return false;
+                }
+                Preprocess(tup.second, out_file, include_directories);
+            }
+
+            else {
+                writeln << buf << endl;
             };
 
-            CHOISE choise;
-            regex_match(buf, sm, R1) ? choise = LOCAL : regex_match(buf, sm, R2) ? choise = GLOBAL : choise = DEFAULT ;
-            pair <string, path> where_and_what;
-            pair<bool, path> tup;
-            
-            switch (choise) {
-            case LOCAL:
-               where_and_what = ConstructorPath(par_path, sm[1]);
-               tup = LocalSearch(where_and_what.first, where_and_what.second, include_directories);
-                if (!tup.first) {
-                    PrintError(where_and_what.first, in_file.string(), counter);
-                    return false;
-                }
-                Preprocess(tup.second, out_file, include_directories);
-            break;
-            case GLOBAL:
-                where_and_what = ConstructorPath(par_path, sm[1]);
-                tup = GlobalSearch(where_and_what.first, include_directories);
-                if (!tup.first) {
-                    PrintError(where_and_what.first, in_file.string(), counter);
-                    return false;
-                }
-                Preprocess(tup.second, out_file, include_directories);
-            break;
-            default:
-                ofstream writeln(out_file, ios::binary | ios::app);
-                writeln << buf << endl;
-                writeln.close();
-            break;
-            }
-        
-           
         } while (readln);
+
 
     }
     return true;
